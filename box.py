@@ -32,6 +32,8 @@ if spcfg.is_vlc:
         import vlc
     except:
         spcfg.is_vlc = False
+
+
         class vlc():
             pass
 
@@ -136,7 +138,8 @@ class Player(QtWidgets.QWidget):
         self.setLayout(layout)
 
         self.videoframe = QtWidgets.QFrame()
-        self.videoframe.setToolTip("拖动视频到此或者双击选择视频" + (",安装VLC解码器后可预览播放" if not spcfg.is_vlc else ""))
+        self.videoframe.setToolTip(
+            "拖动视频到此或者双击选择视频" + (",安装VLC解码器后可预览播放" if not spcfg.is_vlc else ""))
         self.palette = self.videoframe.palette()
         self.palette.setColor(QtGui.QPalette.Window,
                               QtGui.QColor(0, 0, 0))
@@ -274,9 +277,8 @@ class Worker(QThread):
 
     def run(self):
         for cmd in self.cmd_list:
-            logger.info(f"Will execute: ffmpeg {cmd=}")
+            print(f"Will execute: ffmpeg {cmd=}")
             try:
-                print(f'{cmd=}')
                 print(runffmpeg(cmd))
                 # m = re.search(r"-i\s\"?(.*?)\"?\s", cmd, re.I | re.S)
             except Exception as e:
@@ -286,7 +288,6 @@ class Worker(QThread):
 
     def post_message(self, type, text):
         self.update_ui.emit(json.dumps({"func_name": self.func_name, "type": type, "text": text}))
-
 
 
 # 执行语音识别
@@ -312,7 +313,7 @@ class WorkerWhisper(QThread):
 class WorkerTTS(QThread):
     update_ui = pyqtSignal(str)
 
-    def __init__(self, parent=None,*,
+    def __init__(self, parent=None, *,
                  text=None,
                  role=None,
                  rate=None,
@@ -328,11 +329,11 @@ class WorkerTTS(QThread):
         self.rate = rate
         self.filename = filename
         self.tts_type = tts_type
-        self.tts_issrt=tts_issrt
-        self.voice_autorate=voice_autorate
-        self.tmpdir=f'{homedir}/tmp'
+        self.tts_issrt = tts_issrt
+        self.voice_autorate = voice_autorate
+        self.tmpdir = f'{homedir}/tmp'
         if not os.path.exists(self.tmpdir):
-            os.makedirs(self.tmpdir,exist_ok=True)
+            os.makedirs(self.tmpdir, exist_ok=True)
 
     def run(self):
         print(f"start hecheng {self.tts_type=},{self.role=},{self.rate=},{self.filename=}")
@@ -340,15 +341,15 @@ class WorkerTTS(QThread):
         if self.tts_issrt:
             print(f'tts_issrt')
             try:
-                q=self.before_tts()
+                q = self.before_tts()
             except Exception as e:
                 print(e)
-                self.post_message('end',f'字幕配音前处理失败:{str(e)}')
+                self.post_message('end', f'字幕配音前处理失败:{str(e)}')
                 return
             try:
                 self.exec_tts(q)
             except Exception as e:
-                self.post_message('end',f'字幕配音失败:{str(e)}')
+                self.post_message('end', f'字幕配音失败:{str(e)}')
                 return
         else:
             mp3 = self.filename.replace('.wav', '.mp3')
@@ -369,6 +370,7 @@ class WorkerTTS(QThread):
             ])
             os.unlink(mp3)
         self.post_message("end", "处理结束")
+
     # 配音预处理，去掉无效字符，整理开始时间
     def before_tts(self):
         # 所有临时文件均产生在 tmp/无后缀mp4名文件夹
@@ -377,7 +379,7 @@ class WorkerTTS(QThread):
         queue_tts = []
         # 获取字幕
         print(f'before-tts,{self.text=}')
-        subs = get_subtitle_from_srt(self.text,is_file=False)
+        subs = get_subtitle_from_srt(self.text, is_file=False)
         print(f'{subs=}')
         rate = int(str(self.rate).replace('%', ''))
         if rate >= 0:
@@ -401,6 +403,7 @@ class WorkerTTS(QThread):
     # 执行 tts配音，配音后根据条件进行视频降速或配音加速处理
     def exec_tts(self, queue_tts):
         queue_copy = copy.deepcopy(queue_tts)
+
         def get_item(q):
             return {"text": q['text'], "role": q['role'], "rate": q['rate'], "filename": q["filename"],
                     "tts_type": self.tts_type}
@@ -419,24 +422,24 @@ class WorkerTTS(QThread):
                 for t in tolist:
                     t.join()
             except Exception as e:
-                self.post_message('end',f'[error]语音识别出错了:{str(e)}')
+                self.post_message('end', f'[error]语音识别出错了:{str(e)}')
                 return False
         segments = []
         start_times = []
         # 如果设置了视频自动降速 并且有原音频，需要视频自动降速
         if len(queue_copy) < 1:
-            return self.post_message('end',f'出错了，{queue_copy=}')
+            return self.post_message('end', f'出错了，{queue_copy=}')
         try:
             # 偏移时间，用于每个 start_time 增减
             offset = 0
             # 将配音和字幕时间对其，修改字幕时间
             print(f'{queue_copy=}')
-            srtmeta=[]
+            srtmeta = []
             for (idx, it) in enumerate(queue_copy):
-                srtmeta_item={
-                    'dubbing_time':-1,
-                    'source_time':-1,
-                    'speed_up':-1,
+                srtmeta_item = {
+                    'dubbing_time': -1,
+                    'source_time': -1,
+                    'speed_up': -1,
                 }
                 logger.info(f'\n\n{idx=},{it=}')
                 it['start_time'] += offset
@@ -488,7 +491,7 @@ class WorkerTTS(QThread):
             # 原 total_length==0，说明没有上传视频，仅对已有字幕进行处理，不需要裁切音频
             self.merge_audio_segments(segments, start_times)
         except Exception as e:
-            self.post_message('end',f"[error] exec_tts 合成语音有出错:" + str(e))
+            self.post_message('end', f"[error] exec_tts 合成语音有出错:" + str(e))
             return False
         return True
 
@@ -541,6 +544,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def hideWindow(self):
         # 示例按钮点击时调用，隐藏窗口
         self.hide()
+
     def initUI(self):
         self.settings = QSettings("Jameson", "VideoTranslate")
         boxcfg.enable_cuda = self.settings.value("enable_cuda", False, bool)
@@ -613,7 +617,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.geshi_input.setSizePolicy(sizePolicy)
         self.geshi_input.setMinimumSize(300, 0)
 
-
         self.geshi_input.setPlaceholderText("拖动要转换的文件到此处松开")
         self.geshi_input.setReadOnly(True)
         self.geshi_layout.insertWidget(0, self.geshi_input)
@@ -624,11 +627,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.geshi_wav.clicked.connect(lambda: self.geshi_start_fun("wav"))
         self.geshi_output.clicked.connect(lambda: self.opendir_fn(f'{homedir}/conver'))
         if not os.path.exists(f'{homedir}/conver'):
-            os.makedirs(f'{homedir}/conver',exist_ok=True)
+            os.makedirs(f'{homedir}/conver', exist_ok=True)
 
         # 混流
-        self.hun_file1btn.clicked.connect(lambda:self.hun_get_file('file1'))
-        self.hun_file2btn.clicked.connect(lambda:self.hun_get_file('file2'))
+        self.hun_file1btn.clicked.connect(lambda: self.hun_get_file('file1'))
+        self.hun_file2btn.clicked.connect(lambda: self.hun_get_file('file2'))
         self.hun_startbtn.clicked.connect(self.hun_fun)
         self.hun_opendir.clicked.connect(lambda: self.opendir_fn(self.hun_out.text()))
 
@@ -636,15 +639,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.statusBar.addPermanentWidget(QLabel("github.com/jianchang512/pyvideotrans"))
 
     # 获取某格式的文件
-    def hun_get_file(self,name='file1'):
+    def hun_get_file(self, name='file1'):
         fname, _ = QFileDialog.getOpenFileName(self, "选择文件", os.path.expanduser('~'),
-                                                 "Audio files(*.wav)")
+                                               "Audio files(*.wav)")
         if fname:
-            if name=='file1':
-                self.hun_file1.setText(fname.replace('file:///','').replace('\\','/'))
+            if name == 'file1':
+                self.hun_file1.setText(fname.replace('file:///', '').replace('\\', '/'))
             else:
-                self.hun_file2.setText(fname.replace('file:///','').replace('\\','/'))
-
+                self.hun_file2.setText(fname.replace('file:///', '').replace('\\', '/'))
 
     def render_play(self, t):
         if t != 'ok':
@@ -705,7 +707,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.disabled_geshi(False)
                 self.geshi_result.insertPlainText("全部转换完成")
                 self.geshi_input.clear()
-        elif data['func_name']=='hun_end':
+        elif data['func_name'] == 'hun_end':
             self.hun_startbtn.setDisabled(False)
             self.hun_out.setDisabled(False)
 
@@ -718,7 +720,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         video_out = f"{homedir}/{basename}"
         if not os.path.exists(video_out):
             os.makedirs(video_out, exist_ok=True)
-        self.yspfl_task = Worker([['-y','-i',file,'-an',f"{video_out}/{basename}.mp4",f"{video_out}/{basename}.wav"]],"yspfl_end", self)
+        self.yspfl_task = Worker(
+            [['-y', '-i', file, '-an', f"{video_out}/{basename}.mp4", f"{video_out}/{basename}.wav"]], "yspfl_end",
+            self)
         self.yspfl_task.update_ui.connect(self.receiver)
         self.yspfl_task.start()
         self.yspfl_startbtn.setText("执行中...")
@@ -780,29 +784,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not os.path.exists(savedir):
             os.makedirs(savedir, exist_ok=True)
 
-        cmds=[]
+        cmds = []
         if wavfile and srtfile:
-            tmpname=f'{config.rootdir}/tmp/{time.time()}.mp4'
-            srtfile=srtfile.replace('\\', '/').replace(':', '\\\\:')            
-            cmds=[
-                ['-y', '-i', f'{videofile}','-i', f'{wavfile}','-filter_complex', "[0:a][1:a]amerge=inputs=2[aout]",'-map','0:v','-map',"[aout]", '-c:v', 'libx264', '-c:a', 'aac', tmpname],
+            tmpname = f'{config.rootdir}/tmp/{time.time()}.mp4'
+            srtfile = srtfile.replace('\\', '/').replace(':', '\\\\:')
+            cmds = [
+                ['-y', '-i', f'{videofile}', '-i', f'{wavfile}', '-filter_complex', "[0:a][1:a]amerge=inputs=2[aout]",
+                 '-map', '0:v', '-map', "[aout]", '-c:v', 'libx264', '-c:a', 'aac', tmpname],
                 ['-y', '-i', f'{tmpname}', "-vf", f"subtitles={srtfile}", f'{savedir}/{basename}.mp4']
             ]
         else:
             cmd = ['-y', '-i', f'{videofile}']
             if wavfile:
                 # 只存在音频，不存在字幕
-                cmd += ['-i', f'{wavfile}','-filter_complex', "[0:a][1:a]amerge=inputs=2[aout]",'-map','0:v','-map',"[aout]", '-c:v', 'libx264', '-c:a', 'aac']
-            elif srtfile :
-                srtfile=srtfile.replace('\\', '/').replace(':', '\\\\:')
+                cmd += ['-i', f'{wavfile}', '-filter_complex', "[0:a][1:a]amerge=inputs=2[aout]", '-map', '0:v', '-map',
+                        "[aout]", '-c:v', 'libx264', '-c:a', 'aac']
+            elif srtfile:
+                srtfile = srtfile.replace('\\', '/').replace(':', '\\\\:')
                 cmd += ["-vf", f"subtitles={srtfile}"]
-                            
+
             cmd += [f'{savedir}/{basename}.mp4']
-            cmds=[cmd]
+            cmds = [cmd]
         self.ysphb_task = Worker(cmds, "ysphb_end", self)
         self.ysphb_task.update_ui.connect(self.receiver)
         self.ysphb_task.start()
-        
+
         self.ysphb_startbtn.setText("执行中...")
         self.ysphb_startbtn.setDisabled(True)
         self.ysphb_out.setText(f"{savedir}/{basename}.mp4")
@@ -848,7 +854,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not os.path.exists(file):
             return QMessageBox.critical(self, "出错了", "识别前预处理失败，请确认视频中是否含有音频数据")
         model = self.shibie_model.currentText()
-        self.shibie_task = WorkerWhisper(file, model, language_code_list["zh"][self.shibie_language.currentText()][0], "shibie_end", self)
+        self.shibie_task = WorkerWhisper(file, model, language_code_list["zh"][self.shibie_language.currentText()][0],
+                                         "shibie_end", self)
         self.shibie_task.update_ui.connect(self.receiver)
         self.shibie_task.start()
 
@@ -883,7 +890,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         rate = int(self.hecheng_rate.value())
         tts_type = self.tts_type.currentText()
 
-
         if not txt:
             return QMessageBox.critical(self, "出错了", "内容不能为空")
         if language == '-' or role == 'No':
@@ -893,11 +899,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         elif tts_type == 'coquiTTS' and not spcfg.video['coquitts_key']:
             return QMessageBox.critical(self, "出错了", "必须设置 coquiTTS key")
         # 文件名称
-        filename=self.hecheng_out.text()
+        filename = self.hecheng_out.text()
         if not filename:
-            filename=f"tts-{role}-{rate}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
+            filename = f"tts-{role}-{rate}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
         else:
-            filename=filename.replace('.wav','')+".wav"
+            filename = filename.replace('.wav', '') + ".wav"
         if not os.path.exists(f"{homedir}/tts"):
             os.makedirs(f"{homedir}/tts", exist_ok=True)
         wavname = f"{homedir}/tts/{filename}"
@@ -915,7 +921,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #             continue
         #         newtxt.append(it)
         #     txt = "\n".join(newtxt)
-        issrt=self.tts_issrt.isChecked()
+        issrt = self.tts_issrt.isChecked()
         self.hecheng_task = WorkerTTS(self,
                                       text=txt,
                                       role=role,
@@ -932,11 +938,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.hecheng_out.setText(wavname)
         self.hecheng_out.setDisabled(True)
 
-    def tts_issrt_change(self,state):
+    def tts_issrt_change(self, state):
         if state:
             self.voice_autorate.setDisabled(False)
         else:
             self.voice_autorate.setDisabled(True)
+
     # tts类型改变
     def tts_type_change(self, type):
         if type == "openaiTTS":
@@ -1020,25 +1027,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.geshi_mov.setDisabled(type)
         self.geshi_mp3.setDisabled(type)
         self.geshi_wav.setDisabled(type)
+
     # 音频混流
     def hun_fun(self):
-        out=self.hun_out.text().strip()
+        out = self.hun_out.text().strip()
         if not out:
-            out=f'{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.wav'
+            out = f'{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.wav'
         elif not out.endswith('.wav'):
-            out+='.wav'
-            out=out.replace('\\','').replace('/','')
-        dirname=homedir+"/hun_liu"
+            out += '.wav'
+            out = out.replace('\\', '').replace('/', '')
+        dirname = homedir + "/hun_liu"
         if not os.path.exists(dirname):
-            os.makedirs(dirname,exist_ok=True)
-        savename=f'{dirname}/{out}'
+            os.makedirs(dirname, exist_ok=True)
+        savename = f'{dirname}/{out}'
 
         self.hun_out.setText(savename)
 
-        file1=self.hun_file1.text()
-        file2=self.hun_file2.text()
+        file1 = self.hun_file1.text()
+        file2 = self.hun_file2.text()
 
-        cmd=['-y','-i',file1,'-i',file2,'-filter_complex', "[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=2", '-ac','2', savename]
+        cmd = ['-y', '-i', file1, '-i', file2, '-filter_complex',
+               "[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=2", '-ac', '2', savename]
         self.geshi_task = Worker([cmd], "hun_end", self)
         self.geshi_task.update_ui.connect(self.receiver)
         self.geshi_task.start()
@@ -1056,7 +1065,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     main = MainWindow()
-    with open(f'{config.rootdir}/videotrans/styles/style.qss','r',encoding='utf-8') as f:
+    with open(f'{config.rootdir}/videotrans/styles/style.qss', 'r', encoding='utf-8') as f:
         main.setStyleSheet(f.read())
     app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 

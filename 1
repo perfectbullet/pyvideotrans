@@ -1,1 +1,1 @@
-git clone --filter=blob:none --quiet https://github.com/openai/whisper.git 'C:\Users\Administrator\AppData\Local\Temp\pip-install-rigewkw6\openai-whisper_70f822e2e9d44ac78020750eecfb3e42'
+ffmpeg -hide_banner -y -i C:/Users/Administrator/Videos/pyvideotrans/new.mp4/new.mp4.mp4 -i C:/Users/Administrator/Videos/pyvideotrans/new.mp4/new.mp4.wav -filter_complex [0:a][1:a]amerge=inputs=2[aout] -map 0:v -map [aout] -c:v libx264 -c:a aac D:/python_workspace/pyvideotrans-main/tmp/1702304407.8967035.mp4

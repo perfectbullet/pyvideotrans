@@ -23,7 +23,7 @@ from videotrans.util.tools import runffmpeg, set_process, delete_files, delete_t
     is_novoice_mp4, cut_from_video, get_video_duration, text_to_speech, speed_change
 
 
-class TransCreate():
+class TransCreate:
 
     def __init__(self, obj):
         # 一条待处理的完整信息
