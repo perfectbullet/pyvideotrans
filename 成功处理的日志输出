@@ -1,0 +1,30 @@
+pygame 2.5.2 (SDL 2.28.3, Python 3.8.6)
+pygame 2.5.2 (SDL 2.28.3, Python 3.8.6)
+pygame 2.5.2 (SDL 2.28.3, Python 3.8.6)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+pygame 2.5.2 (SDL 2.28.3, Python 3.8.6)
+pygame 2.5.2 (SDL 2.28.3, Python 3.8.6)
+res=<Response [200]>
+d={'version': '0.9.6.8', 'version_num': 968}
+noextname=raw,target_dir=d:/zjpython_work/pyvideotrans-main/result2/raw
+run ffmpeg cmd_ok is ffmpeg -hide_banner -y -i d:\zjpython_work\pyvideotrans-main\result2\raw\novoice.mp4 -i d:\zjpython_work\pyvideotrans-main\result2\raw\zh-cn.wav -sub_charenc UTF-8 -f srt -i d:\zjpython_work\pyvideotrans-main\r
+esult2\raw\zh-cn.srt -c:v libx264 -c:a aac -c:s mov_text -metadata:s:s:0 language=chi d:\zjpython_work\pyvideotrans-main\result2\raw\raw.mp4
+noextname=raw,target_dir=d:/zjpython_work/pyvideotrans-main/result2/raw
+run ffmpeg cmd_ok is ffmpeg -hide_banner -y -i D:/zjpython_work/pyvideotrans-main/ffmpeg/raw.mp4 -an d:/zjpython_work/pyvideotrans-main/result2/raw/novoice.mp4
+run ffmpeg cmd_ok is ffmpeg -hide_banner -y -i D:/zjpython_work/pyvideotrans-main/ffmpeg/raw.mp4 -ac 1 d:/zjpython_work/pyvideotrans-main/result2/raw/en.wav
+google translate code=200
+google translate code=200
+google translate code=200
+google translate code=200
+google translate code=200
+google translate code=200
+google translate code=200
+run ffmpeg cmd_ok is ffmpeg -hide_banner -y -sseof -3 -i d:/zjpython_work/pyvideotrans-main/result2/raw/novoice.mp4 -vsync 0 -q:v 1 -qmin:v 1 -qmax:v 1 -update true D:/zjpython_work/pyvideotrans-main/tmp/raw/last.jpg
+run ffmpeg cmd_ok is ffmpeg -hide_banner -loop 1 -i D:/zjpython_work/pyvideotrans-main/tmp/raw/last.jpg -vf fps=30.0,scale=1280:720 -c:v libx264 -crf 0 -to 00:00:33.835 -pix_fmt yuv420p -y D:/zjpython_work/pyvideotrans-main/tmp/raw
+/last_clip.mp4
+run ffmpeg cmd_ok is ffmpeg -hide_banner -y -i d:/zjpython_work/pyvideotrans-main/result2/raw/novoice.mp4.raw.mp4 -i D:/zjpython_work/pyvideotrans-main/tmp/raw/last_clip.mp4 -filter_complex [0:v][1:v]concat=n=2:v=1:a=0[outv] -map [
+outv] -c:v libx264 -crf 0 -an d:/zjpython_work/pyvideotrans-main/result2/raw/novoice.mp4
+run ffmpeg cmd_ok is ffmpeg -hide_banner -y -i d:\zjpython_work\pyvideotrans-main\result2\raw\novoice.mp4 -i d:\zjpython_work\pyvideotrans-main\result2\raw\zh-cn.wav -sub_charenc UTF-8 -f srt -i d:\zjpython_work\pyvideotrans-main\r
+esult2\raw\zh-cn.srt -c:v libx264 -c:a aac -c:s mov_text -metadata:s:s:0 language=chi d:\zjpython_work\pyvideotrans-main\result2\raw\raw.mp4
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile

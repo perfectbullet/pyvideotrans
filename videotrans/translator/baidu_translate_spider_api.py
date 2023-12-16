@@ -19,28 +19,33 @@ CIPHERS = (
     'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:RSA+3DES:!aNULL:'
     '!eNULL:!MD5'
 )
+
+
 def get_baiducookie_token(max_try_nums=3):
     """:type
     max_try_nums : 最大重试次数
     """
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.4472.124 Safari/537.36'.format(random.choice([100,101,102,103,104,105,106]))
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.4472.124 Safari/537.36'.format(
+            random.choice([100, 101, 102, 103, 104, 105, 106]))
     }
 
     session = requests.Session()
-    session.get("http://www.baidu.com",headers=headers)
-    res = session.get("https://fanyi.baidu.com/?aldtype=85#zh/en/%E4%BB%8A%E5%A4%A9%E6%98%AF%E4%B8%AA%E5%BC%80%E5%BF%83%E7%9A%84%E6%97%A5%E5%AD%90",headers=headers)
-    BAIDUID = re.findall(r"BAIDUID_BFESS=(.*?):",res.headers.get("Set-Cookie",""))
-    token = re.findall(r"token: '(.*)'",res.text)
-    if max_try_nums<0:
-        return "",""
-    if not bool(BAIDUID) or not bool(token): # 有一个没取到都会有问题
-        return get_baiducookie_token(max_try_nums=max_try_nums-1)
-    return BAIDUID[0] ,token[0]
+    session.get("http://www.baidu.com", headers=headers)
+    res = session.get(
+        "https://fanyi.baidu.com/?aldtype=85#zh/en/%E4%BB%8A%E5%A4%A9%E6%98%AF%E4%B8%AA%E5%BC%80%E5%BF%83%E7%9A%84%E6%97%A5%E5%AD%90",
+        headers=headers)
+    BAIDUID = re.findall(r"BAIDUID_BFESS=(.*?):", res.headers.get("Set-Cookie", ""))
+    token = re.findall(r"token: '(.*)'", res.text)
+    if max_try_nums < 0:
+        return "", ""
+    if not bool(BAIDUID) or not bool(token):  # 有一个没取到都会有问题
+        return get_baiducookie_token(max_try_nums=max_try_nums - 1)
+    return BAIDUID[0], token[0]
+
 
 # 获取百度翻译的sign
 def baidufanyi_sign(src):
-
     def a(r):
         if isinstance(r, list):
             t = [0] * len(r)
@@ -117,6 +122,7 @@ def baidufanyi_sign(src):
     i = None
     return e(src)
 
+
 # ja3指纹验证 高版本python urllib3 不兼容低版本的简单处理方案 urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
 class DESAdapter(HTTPAdapter):
     def init_poolmanager(self, *args, **kwargs):
@@ -128,12 +134,13 @@ class DESAdapter(HTTPAdapter):
         context = create_urllib3_context(ciphers=CIPHERS)
         kwargs['ssl_context'] = context
         return super(DESAdapter, self).proxy_manager_for(*args, **kwargs)
+
+
 # 百度翻译 api
-def baidutrans(text, src, dest):
+def baidutrans(text, src, dest, *, set_p=True):
     session = requests.Session()
 
     session.mount('https://fanyi.baidu.com', DESAdapter())
-
 
     session.proxies = None
     # if config.video.get("proxy",""):
@@ -144,7 +151,7 @@ def baidutrans(text, src, dest):
     #     session.proxies = proxies
 
     sign = baidufanyi_sign(text)
-    BAIDUID,token = get_baiducookie_token()
+    BAIDUID, token = get_baiducookie_token()
     # print(sign,BAIDUID,token)
     url = "https://fanyi.baidu.com/v2transapi"
 
@@ -166,15 +173,16 @@ def baidutrans(text, src, dest):
 
     try:
 
-        response = session.post(url, headers=headers, data=payload,timeout=6)
+        response = session.post(url, headers=headers, data=payload, timeout=6)
         # print(response.json())
         if response.status_code != 200:
             return f"error translation code={response.status_code}"
-        re_result = response.json().get("trans_result",{}).get("data",[])
+        re_result = response.json().get("trans_result", {}).get("data", [])
         # print("re_result",re_result)
     except:
         return "[error google api] Please check the connectivity of the proxy or consider changing the IP address."
-    return "error on translation" if len(re_result) < 1 else re_result[0].get("dst","")
+    return "error on translation" if len(re_result) < 1 else re_result[0].get("dst", "")
+
 
 ##########
 if __name__ == '__main__':

@@ -7,7 +7,10 @@ if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 else:
     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
-def get_voice(*,text,role,rate,filename):
+
+
+def get_voice(*, text, role, rate, filename):
+    print('get_voice', text, role)
     communicate = edge_tts.Communicate(text, role, rate=rate)
     asyncio.run(communicate.save(filename))
     return True
