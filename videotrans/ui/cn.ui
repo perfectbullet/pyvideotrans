@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1488</width>
-    <height>771</height>
+    <height>897</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -89,7 +89,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="placeholderText">
-                 <string>选择待翻译的mp4视频，可多个，排队处理</string>
+                 <string/>
                 </property>
                </widget>
               </item>
@@ -134,7 +134,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="placeholderText">
-                 <string>选择翻译后的视频保存到的位置，默认原目录下_video_out中</string>
+                 <string/>
                 </property>
                </widget>
               </item>
@@ -794,38 +794,40 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="minimumSize">
+             <size>
+              <width>110</width>
+              <height>30</height>
+             </size>
+            </property>
             <property name="text">
-             <string>停止倒计时</string>
+             <string>暂停</string>
             </property>
            </widget>
           </item>
          </layout>
         </item>
         <item>
-         <widget class="QTextBrowser" name="process">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>100</height>
-           </size>
-          </property>
-          <property name="autoFillBackground">
-           <bool>false</bool>
-          </property>
+         <widget class="QScrollArea" name="scroll_area">
           <property name="styleSheet">
-           <string notr="true">border:0;
-selection-background-color: rgba(255, 255, 255, 0);
-background-color: rgba(255, 255, 255, 0);</string>
+           <string notr="true">border-color:#32414B</string>
           </property>
-          <property name="readOnly">
+          <property name="widgetResizable">
            <bool>true</bool>
           </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents_5">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>996</width>
+             <height>493</height>
+            </rect>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">border:0</string>
+           </property>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -836,7 +838,47 @@ background-color: rgba(255, 255, 255, 0);</string>
          <number>3</number>
         </property>
         <item>
-         <layout class="QHBoxLayout" name="layout_sub_bottom"/>
+         <layout class="QHBoxLayout" name="layout_sub_bottom">
+          <item>
+           <widget class="QPushButton" name="import_sub">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>35</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>导入字幕</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="listen_peiyin">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>35</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>试听</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="set_line_role">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>35</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>设置多角色</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
@@ -866,9 +908,13 @@ background-color: rgba(255, 255, 255, 0);</string>
     <addaction name="separator"/>
     <addaction name="actionazure_key"/>
     <addaction name="separator"/>
+    <addaction name="actiongemini_key"/>
+    <addaction name="separator"/>
     <addaction name="actiondeepL_key"/>
     <addaction name="separator"/>
     <addaction name="actiondeepLX_address"/>
+    <addaction name="separator"/>
+    <addaction name="actionElevenlabs_key"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menu">
@@ -877,11 +923,14 @@ background-color: rgba(255, 255, 255, 0);</string>
     </property>
     <addaction name="action_tool"/>
     <addaction name="separator"/>
+    <addaction name="actionyoutube"/>
+    <addaction name="separator"/>
     <addaction name="action_clone"/>
+    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menu_H">
     <property name="title">
-     <string>帮助(&amp;H)</string>
+     <string>帮助支持(&amp;H)</string>
     </property>
     <addaction name="separator"/>
     <addaction name="action_website"/>
@@ -891,8 +940,6 @@ background-color: rgba(255, 255, 255, 0);</string>
     <addaction name="action_git"/>
     <addaction name="separator"/>
     <addaction name="action_issue"/>
-    <addaction name="separator"/>
-    <addaction name="action_vlc"/>
     <addaction name="separator"/>
     <addaction name="action_ffmpeg"/>
     <addaction name="separator"/>
@@ -980,7 +1027,7 @@ background-color: rgba(255, 255, 255, 0);</string>
   </action>
   <action name="action_ffmpeg">
    <property name="text">
-    <string>FFmpeg</string>
+    <string>FFmpeg官网</string>
    </property>
    <property name="toolTip">
     <string>去FFmpeg官网</string>
@@ -988,12 +1035,12 @@ background-color: rgba(255, 255, 255, 0);</string>
   </action>
   <action name="action_git">
    <property name="text">
-    <string>github 代码</string>
+    <string>GitHub仓库</string>
    </property>
   </action>
   <action name="action_issue">
    <property name="text">
-    <string>发个issue</string>
+    <string>遇到问题?</string>
    </property>
   </action>
   <action name="action_clone">
@@ -1008,7 +1055,7 @@ background-color: rgba(255, 255, 255, 0);</string>
   </action>
   <action name="action_website">
    <property name="text">
-    <string>文档</string>
+    <string>文档站点</string>
    </property>
   </action>
   <action name="action_discord">
@@ -1023,7 +1070,7 @@ background-color: rgba(255, 255, 255, 0);</string>
   </action>
   <action name="action_about">
    <property name="text">
-    <string>支持该软件</string>
+    <string>捐助开发者</string>
    </property>
   </action>
   <action name="action_biaozhun">
@@ -1143,6 +1190,21 @@ background-color: rgba(255, 255, 255, 0);</string>
   <action name="actionazure_key">
    <property name="text">
     <string>Azure AI</string>
+   </property>
+  </action>
+  <action name="actiongemini_key">
+   <property name="text">
+    <string>Gemini Pro</string>
+   </property>
+  </action>
+  <action name="actionElevenlabs_key">
+   <property name="text">
+    <string>Elevenlabs</string>
+   </property>
+  </action>
+  <action name="actionyoutube">
+   <property name="text">
+    <string>下载Youtube视频</string>
    </property>
   </action>
  </widget>
