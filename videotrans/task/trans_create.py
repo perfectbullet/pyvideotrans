@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import textwrap
 import threading
 import time
@@ -20,20 +21,15 @@ from videotrans.configure.config import transobj, logger, homedir,Myexcept
 from videotrans.translator import chatgpttrans, googletrans, baidutrans, tencenttrans, deepltrans,  deeplxtrans, azuretrans, geminitrans
 from videotrans.util.tools import runffmpeg, set_process, match_target_amplitude, shorten_voice,ms_to_time_string, get_subtitle_from_srt, get_lastjpg_fromvideo,  is_novoice_mp4, cut_from_video, get_video_duration, text_to_speech,  delete_temp,     get_video_info, conver_mp4, split_novoice_byraw, split_audio_byraw, wav2m4a, m4a2wav, create_video_byimg,  concat_multi_mp4, speed_up_mp3
 
-device = "cuda" if config.params['cuda'] else "cpu"
-
-
-
-
 class TransCreate():
 
     def __init__(self, obj):
-        print('00000')
         self.step = 'prepare'
         self.precent=0
         # 原始视频地址，等待转换为mp4格式
         self.wait_convermp4=None
         self.app_mode = obj['app_mode']
+        self.device = "cuda" if config.params['cuda'] else "cpu"
         # 原始视频
         self.source_mp4 = obj['source_mp4'].replace('\\', '/') if 'source_mp4' in obj else ""
         # 视频信息
@@ -52,27 +48,36 @@ class TransCreate():
         # 没有视频，是根据字幕生成配音
         if not self.source_mp4:
             self.noextname = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            config.btnkey="srt2wav"
         else:
-            print('111')
             # 去掉扩展名的视频名，做标识
             self.noextname, ext = os.path.splitext(os.path.basename(self.source_mp4))
-            print(f'111 {ext=}')
+            # 如果含有空格，重命名并移动
+            if re.search(r' |\s', self.source_mp4) or (config.params['target_dir'] and re.search(r' |\s', config.params['target_dir'])):
+                self.noextname=re.sub(r' |\s', '', self.noextname)
+                new_dir=config.homedir+f"/renamemp4"
+                set_process(f'{transobj["qianyiwenjian"]} {new_dir}', "rename")
+                os.makedirs(new_dir, exist_ok=True)
+                config.params['target_dir']=new_dir
+                
+                newmp4=f'{new_dir}/{self.noextname}{ext}'
+                shutil.copy2(self.source_mp4, newmp4)
+                self.source_mp4=newmp4
+                
+
             # 不是mp4，先转为mp4
             if ext.lower() != '.mp4':
                 out_mp4 = re.sub(rf'{ext}$', '.mp4', self.source_mp4)
                 self.wait_convermp4=self.source_mp4
                 self.source_mp4=out_mp4
-                config.btnkey=self.source_mp4
+                #config.btnkey=self.source_mp4
             else:
                 # 获取视频信息
-                config.btnkey=self.source_mp4
-                print(f'111 {self.source_mp4=}')
+                #config.btnkey=self.source_mp4
                 try:
                     self.video_info = get_video_info(self.source_mp4)
                 except Exception as e:
                     print(f'e=={str(e)}')
-                print(f'111 video')
+
                 if self.video_info is False:
                     raise Myexcept("get video_info error")
                 # 不是标准mp4，先转码
@@ -81,13 +86,17 @@ class TransCreate():
                     out_mp4 = self.source_mp4[:-4] + "-libx264.mp4"
                     self.wait_convermp4=self.source_mp4
                     self.source_mp4 = out_mp4
-        print('222')
+            
+        if self.source_mp4:
+            self.btnkey=self.source_mp4
+        else:
+            self.btnkey="srt2wav"
+        
         if not config.params['target_dir']:
             self.target_dir = f"{homedir}/only_dubbing" if not self.source_mp4 else (
                     os.path.dirname(self.source_mp4) + "/_video_out")
         else:
             self.target_dir = config.params['target_dir']
-        print('333')
         # 全局目标，用于前台打开
         self.target_dir = self.target_dir.replace('\\','/').replace('//', '/')
         config.params['target_dir'] = self.target_dir
@@ -124,7 +133,8 @@ class TransCreate():
 
     # 启动执行入口
     def run(self):
-        print('444')
+        config.settings=config.parse_init()
+            
         if config.current_status != 'ing':
             raise Myexcept("Had stop")
         if self.wait_convermp4:
@@ -230,9 +240,9 @@ class TransCreate():
 
         # 等待编辑原字幕后翻译
         set_process(transobj["xiugaiyuanyuyan"], 'edit_subtitle')
-        config.task_countdown = config.settings['OPTIM']['countdown_sec']
+        config.task_countdown = config.settings['countdown_sec']
         while config.task_countdown > 0:
-            if config.task_countdown <= config.settings['OPTIM']['countdown_sec'] and config.task_countdown >= 0:
+            if config.task_countdown <= config.settings['countdown_sec'] and config.task_countdown >= 0:
                 set_process(f"{config.task_countdown} {transobj['jimiaohoufanyi']}", 'show_djs')
             time.sleep(1)
             config.task_countdown -= 1
@@ -250,7 +260,7 @@ class TransCreate():
             return True
 
         set_process(transobj["xiugaipeiyinzimu"], "edit_subtitle")
-        config.task_countdown = config.settings['OPTIM']['countdown_sec']
+        config.task_countdown = config.settings['countdown_sec']
         while config.task_countdown > 0:
             if config.current_status != 'ing':
                 raise Myexcept(transobj["tingzhile"])
@@ -258,7 +268,7 @@ class TransCreate():
             time.sleep(1)
             # 倒计时中
             config.task_countdown -= 1
-            if config.task_countdown <= config.settings['OPTIM']['countdown_sec'] and config.task_countdown >= 0:
+            if config.task_countdown <= config.settings['countdown_sec'] and config.task_countdown >= 0:
                 set_process(f"{config.task_countdown}{transobj['zidonghebingmiaohou']}", 'show_djs')
         set_process('', 'timeout_djs')
         time.sleep(3)
@@ -367,32 +377,29 @@ class TransCreate():
             with open(nonslient_file, 'w') as outfile:
                 json.dump(nonsilent_data, outfile)
 
-        r = WhisperModel(config.params['whisper_model'], device=device,
-                         compute_type="int8" if device == 'cpu' else "int8_float16",
-                         download_root=config.rootdir + "/models",num_workers=os.cpu_count(),cpu_threads=os.cpu_count(), local_files_only=True)
         raw_subtitles = []
         # offset = 0
         language = "zh" if config.params['detect_language'] == "zh-cn" or config.params[
             'detect_language'] == "zh-tw" else config.params['detect_language']
-        for i, duration in enumerate(nonsilent_data):
+
+        split_size=os.cpu_count()
+        total_length=len(nonsilent_data)
+        thread_chunk=[nonsilent_data[i:i+split_size] for i in range(0,len(nonsilent_data),split_size)]
+        def shibie(*, duration=None, i=None,line=None):
+            r = WhisperModel(config.params['whisper_model'], device=self.device,
+                             compute_type=config.settings['cuda_com_type'],
+                             download_root=config.rootdir + "/models",
+                             cpu_threads=1,
+                             num_workers=1, local_files_only=True)
             if config.current_status == 'stop':
                 raise Myexcept("Has stop")
             start_time, end_time, buffered = duration
-            # start_time += offset
-            # end_time += offset
             if start_time == end_time:
                 end_time += 200
-                # 如果加了200后，和下一个开始重合，则偏移
-                # if (i < len(nonsilent_data) - 1) and nonsilent_data[i + 1][0] < end_time:
-                #     offset += 200
-            # 进度
-            if self.precent<60:
-                self.precent+=(i+1)*20/len(nonsilent_data)
-            set_process(f"{transobj['yuyinshibiejindu']}")
+
             chunk_filename = tmp_path + f"/c{i}_{start_time // 1000}_{end_time // 1000}.wav"
             audio_chunk = normalized_sound[start_time:end_time]
             audio_chunk.export(chunk_filename, format="wav")
-
 
             if config.current_status != 'ing':
                 raise Myexcept("Has stop .")
@@ -405,15 +412,14 @@ class TransCreate():
                     text += t.text + " "
             except Exception as e:
                 set_process("[error]:" + str(e))
-                continue
+                return
 
             if config.current_status == 'stop':
                 raise Myexcept("Has stop it.")
             text = f"{text.capitalize()}. ".replace('&#39;', "'")
             text = re.sub(r'&#\d+;', '', text).strip()
             if not text or re.match(r'^[，。、？‘’“”；：（｛｝【】）:;"\'\s \d`!@#$%^&*()_+=.,?/\\-]*$', text):
-                continue
-
+                return
             start = timedelta(milliseconds=start_time)
             stmp = str(start).split('.')
             if len(stmp) == 2:
@@ -422,12 +428,36 @@ class TransCreate():
             etmp = str(end).split('.')
             if len(etmp) == 2:
                 end = f'{etmp[0]},{int(int(etmp[-1]) / 1000)}'
-            line = len(raw_subtitles) + 1
-            set_process(f"{line}\n{start} --> {end}\n{text}\n\n", 'subtitle')
-            raw_subtitles.append({"line": line, "time": f"{start} --> {end}", "text": text})
+            srt_line = {"line": line, "time": f"{start} --> {end}", "text": text}
+            config.temp[i]=srt_line
+            r=None
+
+        start_t=time.time()
+        for (j,it) in enumerate(thread_chunk):
+            config.temp={}
+            threads=[]
+            line=0
+            for i,duration in enumerate(it):
+                line=(j*split_size)+i+1
+                config.temp[i]=None
+                threads.append(threading.Thread(target=shibie,kwargs={"i":i,"duration":duration,"line":line}))
+            for th in threads:
+                th.start()
+            for th in threads:
+                th.join()
+            if self.precent < 65:
+                self.precent+=(j+1)*10/len(thread_chunk)
+            set_process(f"{transobj['yuyinshibiejindu']} {line}/{total_length}")
+            config.temp=[x for x in list(config.temp.values()) if x is not None]
+            raw_subtitles.extend(config.temp)
+            msg=""
+            for t in config.temp:
+                msg+=f"{t['line']}\n{t['time']}\n{t['text']}\n\n"
+            set_process(msg,'subtitle')
+
+        print(f'用时 {time.time() - start_t}')
         set_process(f"{transobj['yuyinshibiewancheng']} / {len(raw_subtitles)}", 'logs')
         # 写入原语言字幕到目标文件夹
-        print(raw_subtitles)
         self.save_srt_target(raw_subtitles, self.targetdir_source_sub)
         return True
 
@@ -436,12 +466,14 @@ class TransCreate():
         language = "zh" if config.params['detect_language'] in ["zh-cn", "zh-tw"] else config.params['detect_language']
         set_process(f"{config.params['whisper_model']} {transobj['kaishishibie']}, audio time {round(self.video_info['time']/1000)}s")
         down_root=os.path.normpath(config.rootdir + "/models")
-        print(f'{down_root}')
         try:
-            model = WhisperModel(config.params['whisper_model'], device=device,
-                                 compute_type="int8" if device == 'cpu' else "int8_float16",
-                                 download_root=down_root,num_workers=os.cpu_count(),
-                                 cpu_threads=os.cpu_count(),
+            start_t=time.time()
+
+            model = WhisperModel(config.params['whisper_model'], device=self.device,
+                                 compute_type=config.settings['cuda_com_type'],
+                                 download_root=down_root,
+                                 num_workers=config.settings['whisper_worker'],
+                                 cpu_threads= os.cpu_count() if config.settings['whisper_threads']==0 else config.settings['whisper_threads'],
                                  local_files_only=True)
             wavfile = self.cache_folder + "/tmp.wav"
             m4a2wav(self.targetdir_source_wav, wavfile)
@@ -481,12 +513,13 @@ class TransCreate():
                 set_process(f'{transobj["zimuhangshu"]} {s["line"]}')
                 if self.precent<60:
                     self.precent+=0.05
-
+            # 写入翻译前的原语言字幕到目标文件夹
+            print(f'用时 {time.time() - start_t}')
+            model=None
+            self.save_srt_target(raw_subtitles, self.targetdir_source_sub)
         except Exception as e:
             raise Exception(f'whole all {str(e)}')
         set_process(transobj['yuyinshibiewancheng'], 'logs')
-        # 写入翻译前的原语言字幕到目标文件夹
-        self.save_srt_target(raw_subtitles, self.targetdir_source_sub)
 
     # 处理翻译,完整字幕由 src翻译为 target
     def srt_translation_srt(self):
@@ -508,7 +541,7 @@ class TransCreate():
             rawsrt = geminitrans(rawsrt, config.params['target_language_gemini'])
         else:
             # 其他翻译，逐行翻译
-            split_size = config.settings['OPTIM']['trans_thread']
+            split_size = config.settings['trans_thread']
             srt_lists = [rawsrt[i:i + split_size] for i in range(0, len(rawsrt), split_size)]
             # 存放翻译后结果
             trans_list=[]
@@ -549,6 +582,8 @@ class TransCreate():
                 set_process(srt_str, "subtitle")
                 trans_list.extend(item)
         # 保存翻译后的字幕到目标文件夹
+        if len(rawsrt)<1:
+            raise Exception("translate result is 0")
         self.save_srt_target(rawsrt, self.targetdir_target_sub)
         return True
 
@@ -573,6 +608,8 @@ class TransCreate():
             # 获取字幕
             try:
                 subs = get_subtitle_from_srt(self.targetdir_target_sub)
+                if len(subs)<1:
+                    raise Exception(" subtitles size is 0")
             except Exception as e:
                 raise Myexcept(f'[error] before tts srt error:{str(e)}')
 
@@ -650,9 +687,7 @@ class TransCreate():
         total_length = 0
         # 处理过程中不断变化的 novoice_mp4
         novoice_mp4_tmp = f"{self.cache_folder}/novoice_tmp.mp4"
-        tmppert = f"{self.cache_folder}/tmppert.mp4"
-        tmppert2 = f"{self.cache_folder}/tmppert2.mp4"
-        tmppert3 = f"{self.cache_folder}/tmppert3.mp4"
+
         # 上一个片段的结束时间，用于判断是否需要复制上一个和当前2个片段中间的片段
         last_endtime = 0
         offset = 0
@@ -666,6 +701,9 @@ class TransCreate():
                 cut_from_video(ss="0", to=queue_copy[0]['startraw'], source=self.novoice_mp4, out=novoice_mp4_tmp)
                 last_endtime = queue_copy[0]['start_time']
             for (idx, it) in enumerate(queue_params):
+                tmppert = f"{self.cache_folder}/tmppert-{idx}.mp4"
+                tmppert2 = f"{self.cache_folder}/tmppert2-{idx}.mp4"
+                tmppert3 = f"{self.cache_folder}/tmppert3-{idx}.mp4"
                 if config.current_status != 'ing':
                     raise Myexcept("Had stop")
                 jd=round((idx+1)*20/(last_index+1),1)
@@ -725,16 +763,18 @@ class TransCreate():
                                 cut_from_video(ss=queue_copy[idx]['startraw'], to=queue_copy[idx]['endraw'],
                                                source=self.novoice_mp4, pts=pts, out=tmppert2)
                                 concat_multi_mp4(filelist=[novoice_mp4_tmp, tmppert, tmppert2], out=tmppert3)
-                                os.unlink(novoice_mp4_tmp)
-                                os.rename(tmppert3, novoice_mp4_tmp)
+                                novoice_mp4_tmp=tmppert3
+                                # os.unlink(novoice_mp4_tmp)
+                                # os.rename(tmppert3, novoice_mp4_tmp)
                             else:
                                 # 中间无片段
                                 logger.info(f'\tstart_time <= last_endtime and 中间无片段')
                                 cut_from_video(ss=queue_copy[idx]['startraw'], to=queue_copy[idx]['endraw'],
                                                source=self.novoice_mp4, pts=pts, out=tmppert)
                                 concat_multi_mp4(filelist=[novoice_mp4_tmp, tmppert], out=tmppert2)
-                                os.unlink(novoice_mp4_tmp)
-                                os.rename(tmppert2, novoice_mp4_tmp)
+                                # os.unlink(novoice_mp4_tmp)
+                                # os.rename(tmppert2, novoice_mp4_tmp)
+                                novoice_mp4_tmp=tmppert2
                         cut_clip += 1
                     else:
                         logger.info(f'cut_clip>0, {cut_clip=} ,{last_endtime=}')
@@ -754,8 +794,9 @@ class TransCreate():
                                            source=self.novoice_mp4, pts=pts, out=tmppert2)
                             pdlist.append(tmppert2)
                             concat_multi_mp4(filelist=pdlist, out=tmppert3)
-                            os.unlink(novoice_mp4_tmp)
-                            os.rename(tmppert3, novoice_mp4_tmp)
+                            # os.unlink(novoice_mp4_tmp)
+                            # os.rename(tmppert3, novoice_mp4_tmp)
+                            novoice_mp4_tmp=tmppert3
                         else:
                             # 和上个片段间中间无片段
                             logger.info(f'pert==0,中间无片段')
@@ -765,8 +806,9 @@ class TransCreate():
                                            source=self.novoice_mp4, pts=pts, out=tmppert)
                             pdlist.append(tmppert)
                             concat_multi_mp4(filelist=pdlist, out=tmppert2)
-                            os.unlink(novoice_mp4_tmp)
-                            os.rename(tmppert2, novoice_mp4_tmp)
+                            # os.unlink(novoice_mp4_tmp)
+                            # os.rename(tmppert2, novoice_mp4_tmp)
+                            novoice_mp4_tmp=tmppert2
                     last_endtime = queue_copy[idx]['end_time']
                     queue_params[idx] = it
                 else:
@@ -789,10 +831,10 @@ class TransCreate():
                                        to=queue_copy[idx]['endraw'],
                                        source=self.novoice_mp4, out=tmppert)
                         concat_multi_mp4(filelist=[novoice_mp4_tmp, tmppert], out=tmppert2)
-                        os.unlink(novoice_mp4_tmp)
-                        os.rename(tmppert2, novoice_mp4_tmp)
+                        # os.unlink(novoice_mp4_tmp)
+                        # os.rename(tmppert2, novoice_mp4_tmp)
+                        novoice_mp4_tmp=tmppert2
                     last_endtime = queue_copy[idx]['end_time']
-
                 start_times.append(it['start_time'])
                 segments.append(audio_data)
         except Exception as e:
@@ -800,11 +842,14 @@ class TransCreate():
 
         if last_endtime < queue_copy[-1]['end_time']:
             logger.info(f'处理循环完毕，但未到结尾 last_endtime < end_time')
+            out1=f'{self.cache_folder}/out1.mp4'
+            out2=f'{self.cache_folder}/out2.mp4'
             cut_from_video(ss=queue_copy[-1]['endraw'], to="", source=self.novoice_mp4,
-                           out=tmppert)
-            concat_multi_mp4(filelist=[novoice_mp4_tmp, tmppert], out=tmppert2)
-            os.unlink(novoice_mp4_tmp)
-            os.rename(tmppert2, novoice_mp4_tmp)
+                           out=out1)
+            concat_multi_mp4(filelist=[novoice_mp4_tmp, out1], out=out2)
+            novoice_mp4_tmp=out2
+            # os.unlink(novoice_mp4_tmp)
+            # os.rename(tmppert2, novoice_mp4_tmp)
         set_process(f"Origin:{source_mp4_total_length=} + offset:{offset} = {source_mp4_total_length + offset}")
 
         # if os.path.exists(novoice_mp4_tmp) and os.path.getsize(novoice_mp4_tmp) > 0:
@@ -853,7 +898,7 @@ class TransCreate():
                 raise Myexcept('Had stop')
             try:
                 tolist=[]
-                for i in range(config.settings['OPTIM']['dubbing_thread']):
+                for i in range(config.settings['dubbing_thread']):
                     if len(queue_tts) > 0:
                         tolist.append(threading.Thread(target=text_to_speech, kwargs=get_item(queue_tts.pop(0))))
                 for t in tolist:
@@ -974,8 +1019,12 @@ class TransCreate():
                 subtitles += f"{it['line']}\n{it['time']}\n{it['text']}\n\n"
             with open(self.targetdir_target_sub, 'w', encoding="utf-8") as f:
                 f.write(subtitles.strip())
-            shutil.copy2(self.targetdir_target_sub, config.rootdir + "/tmp.srt")
-            hard_srt = "tmp.srt"
+            if sys.platform=='win32':
+                shutil.copy2(self.targetdir_target_sub, config.rootdir + "/tmp.srt")
+                os.chdir(config.rootdir)
+                hard_srt = "tmp.srt"
+            else:
+                hard_srt=self.targetdir_target_sub
         if self.precent<95:
             self.precent+=1
         # 有字幕有配音

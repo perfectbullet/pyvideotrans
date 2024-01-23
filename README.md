@@ -5,7 +5,7 @@
 [windows预编译版exe下载地址](https://github.com/jianchang512/pyvideotrans/releases)
 
 >
-> 这是一个视频翻译配音工具，可将一种语言的视频翻译为另一种语言配音和字幕的视频。
+> 这是一个视频翻译配音工具，可将一种语言的视频翻译为指定语言的视频，自动生成和添加该语言的字幕和配音。
 >
 > 语音识别基于 `faster-whisper` 离线模型.
 >
@@ -58,13 +58,16 @@ https://github.com/jianchang512/pyvideotrans/assets/3378335/c3d193c8-f680-45e2-8
 
 # 源码部署
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1yDGPWRyXeZ1GWqkOpdJDv4nA_88HNm01?usp=sharing)
+
+
 1. 配置好 python 3.9->3.11 环境
 2. `git clone https://github.com/jianchang512/pyvideotrans`
 3. `cd pyvideotrans`
 4. `python -m venv venv`
 5. win下执行 `%cd%/venv/scripts/activate`,linux和mac执行 `source ./venv/bin/activate`
 6. `pip install -r requirements.txt`，如果遇到版本冲突报错，请使用 `pip install -r requirements.txt --no-deps` （MacOS不支持CUDA，Mac下将 requirements.txt 替换为 requirements-mac.txt ）
-7. win下解压 ffmpeg.zip 到根目录下 (ffmpeg.exe文件)，linux和mac 请自行安装 ffmpeg，具体方法可"百度 or Goole"
+7. win下解压 ffmpeg.zip 到根目录下 (ffmpeg.exe文件)，linux和mac 请自行安装 ffmpeg，具体方法可"百度 or Google"
 8. `python sp.py` 打开软件界面
 9. 如果需要支持CUDA加速，需要设备具有 NVIDIA 显卡，具体安装防范见下方 [CUDA加速支持](https://github.com/jianchang512/pyvideotrans?tab=readme-ov-file#cuda-%E5%8A%A0%E9%80%9F%E6%94%AF%E6%8C%81)
 
@@ -100,7 +103,6 @@ https://github.com/jianchang512/pyvideotrans/assets/3378335/c3d193c8-f680-45e2-8
 
     ![](https://github.com/jianchang512/stt/assets/3378335/5c972f7b-b0bf-4732-a6f1-253f42c45087)
  
-    [VLC解码器下载](https://www.videolan.org/vlc/)
 
     [FFmepg下载(编译版已自带)](https://www.ffmpeg.org/)
 
@@ -135,6 +137,35 @@ https://github.com/jianchang512/pyvideotrans/assets/3378335/c3d193c8-f680-45e2-8
 
 17. 设置行角色：可对字幕中的每行设定发音角色，首先左侧选好TTS类型和角色，然后点击字幕区右下方“设置行角色”，在每个角色名后面文本中中，填写要使用该角色配音的行编号，如下图：
     ![](./images/p2.png)
+
+# 高级设置 videotrans/set.ini
+
+**请勿随意调整，除非你知道将会发生什么**
+
+```
+;设置软件界面语言，en代表英文，zh代表中文
+lang =
+;同时配音线程数量
+dubbing_thread=5
+;同时翻译行数
+trans_thread=10
+;软件等待修改字幕倒计时
+countdown_sec=60
+;加速设备 cuvid 或 cuda
+hwaccel=cuvid
+; 加速设备输出格式，nv12 或 cuda 
+hwaccel_output_format=nv12
+;是否使用硬件解码 -c:v h264_cuvid  true代表是，false代表否
+no_decode=false
+;语音识别时，数据格式，int8 或 float16 或 float32
+cuda_com_type=int8
+; 语音识别线程数量，0代表和cpu核数一致，如果占用cpu太多，此处可改为4
+whisper_threads=0
+;语音识别工作进程数量
+whisper_worker=2
+
+```
+
 
 
 # CUDA 加速支持

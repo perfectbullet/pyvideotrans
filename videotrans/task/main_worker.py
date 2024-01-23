@@ -17,28 +17,37 @@ class Worker(QThread):
 
     def run(self) -> None:
         task_nums = len(config.queue_task)
+        objs=[]
+        for (i,it) in enumerate(config.queue_task):
+            t=TransCreate(it)
+            set_process(t.btnkey, 'add_process')
+            objs.append(t)
         num = 0
-        while len(config.queue_task) > 0:
+        while len(objs)>0:
             num += 1
-            it = config.queue_task.pop(0)
             set_process(f"Processing {num}/{task_nums}", 'statusbar')
             try:
                 st = time.time()
-                self.video = TransCreate(it)
+                self.video = objs.pop(0)
+                config.btnkey=self.video.btnkey
                 set_process(transobj['kaishichuli'])
                 self.video.run()
                 # 成功完成
                 config.params['line_roles'] = {}
                 set_process(f"{self.video.target_dir}##{int(time.time() - st)}", 'succeed')
 
-                if os.path.exists(self.video.novoice_mp4):
-                    time.sleep(3)
-                    os.unlink(self.video.novoice_mp4)
-
+                try:
+                    if os.path.exists(self.video.novoice_mp4):
+                        time.sleep(1)
+                        os.unlink(self.video.novoice_mp4)
+                except:
+                    pass
             except Exception as e:
                 print(f"mainworker {str(e)}")
                 set_process(f"{str(e)}", 'error')
                 return
+            finally:
+                self.video=None
         # 全部完成
         set_process("", 'end')
         time.sleep(10)

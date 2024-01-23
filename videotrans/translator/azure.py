@@ -10,7 +10,6 @@ from openai import OpenAI
 from openai import AzureOpenAI
 
 from videotrans.configure import config
-from videotrans.configure.config import logger
 from videotrans.util import tools
 
 '''
@@ -68,7 +67,7 @@ def azuretrans(text_list, target_language_chatgpt="English", *, set_p=True):
             raise Exception(f"azure翻译失败 :{error}")
 
     total_result = []
-    split_size = config.settings['OPTIM']['trans_thread']
+    split_size = config.settings['trans_thread']
     # 按照 split_size 将字幕每组8个分成多组,是个二维列表，一维是包含8个字幕dict的list，二维是每个字幕dict的list
     srt_lists = [text_list[i:i + split_size] for i in range(0, len(text_list), split_size)]
     srts = ''
@@ -88,13 +87,13 @@ def azuretrans(text_list, target_language_chatgpt="English", *, set_p=True):
                 tools.set_process(f'Azure Line: {it["line"]}')
 
         len_sub = len(origin)
-        logger.info(f"\n[chatGPT start]待翻译文本:" + "\n".join(trans))
+        config.logger.info(f"\n[chatGPT start]待翻译文本:" + "\n".join(trans))
         messages = [
             {'role': 'system',
              'content': config.params["azure_template"].replace('{lang}', lang)},
             {'role': 'user', 'content': "\n".join(trans)},
         ]
-        logger.info(f"发送消息{messages=}")
+        config.logger.info(f"发送消息{messages=}")
         try:
             client = AzureOpenAI(
                 api_key=config.params["azure_key"],
@@ -106,7 +105,7 @@ def azuretrans(text_list, target_language_chatgpt="English", *, set_p=True):
                 model=config.params["azure_model"],
                 messages=messages
             )
-            logger.info(f"返回响应:{response=}")
+            config.logger.info(f"返回响应:{response=}")
             # 是否在 code 判断时就已出错
             vail_data = None
             # 返回可能多种形式，openai和第三方
@@ -147,7 +146,7 @@ def azuretrans(text_list, target_language_chatgpt="English", *, set_p=True):
                 time.sleep(30)
                 return azuretrans(text_list)
             else:
-                logger.error(f"【azure Error-2】翻译失败 :{error}")
+                config.logger.error(f"【azure Error-2】翻译失败 :{error}")
                 raise Exception(f'Azure translation error:{error}')
 
         # 处理

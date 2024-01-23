@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
+import configparser
 import datetime
+import json
 import os
 import locale
 import logging
+import re
 import sys
 from queue import Queue
 
-from videotrans.configure.language import translate_language, language_code_list,clilanglist
-import configparser
-
-# 当前执行目录
 rootdir = os.getcwd().replace('\\', '/')
 TEMP_DIR=os.path.join(rootdir,"tmp").replace('\\','/')
 if not os.path.exists(TEMP_DIR):
@@ -25,43 +24,51 @@ logging.basicConfig(
 logger = logging.getLogger('VideoTrans')
 
 # 语言
-defaulelang = "en" if locale.getdefaultlocale()[0].split('_')[0].lower() != 'zh' else "zh"
-
-# 初始化一个字典变量
-settings = {
-    "GUI":{
-        "lang":defaulelang
-    },
-    "OPTIM":{
-        "dubbing_thread":5,
-        "trans_thread":10,
-        "countdown_sec":60
+defaulelang = locale.getdefaultlocale()[0][:2].lower()
+def parse_init():
+    settings = {
+            "lang":defaulelang,
+            "dubbing_thread":5,
+            "trans_thread":10,
+            "countdown_sec":60,
+            "cuda_com_type":"int8",
+            "whisper_threads":0,
+            "whisper_worker":2
     }
-}
-if os.path.exists(f'{rootdir}/set.ini'):
-    # 创建配置解析器
-    iniconfig = configparser.ConfigParser()
-    # 读取.ini文件
-    iniconfig.read(f'{rootdir}/set.ini')
-    # 遍历.ini文件中的每个section
-    for section in iniconfig.sections():
-        settings[section] = {}
-        # 遍历每个section中的每个option
-        for key, value in iniconfig.items(section):
-            settings[section][key] = int(value) if key in ["dubbing_thread","trans_thread","countdown_sec"] else value
+    file=os.path.join(rootdir,'videotrans/set.ini')
+    if os.path.exists(file):
+        # 创建配置解析器
+        iniconfig = configparser.ConfigParser()
+        # 读取.ini文件
+        iniconfig.read(file)
+        # return
+        # 遍历.ini文件中的每个section
+        for section in iniconfig.sections():
+            # 遍历每个section中的每个option
+            for key, value in iniconfig.items(section):
+                value=value.strip()
+                if re.match(r'^\d+$',value):
+                    settings[key] = int(value)
+                elif re.match(r'^true|false$',value):
+                    settings[key] = bool(value)
+                else:
+                    settings[key] = str(value)
+    return settings
+# 初始化一个字典变量
+settings = parse_init()
 
 # default language 如果 ini中设置了，则直接使用，否则自动判断
-if settings['GUI']['lang'].lower() in ["en", 'zh', 'zh-cn']:
-    defaulelang=settings['GUI']['lang'].lower()
+if settings['lang']:
+    defaulelang=settings['lang'].lower()
+# 语言代码文件是否存在
+if not os.path.join(rootdir,f'videotrans/language/{defaulelang}.json'):
+    defaulelang="en"
 
-if defaulelang == 'en':
-    transobj = translate_language['en']
-    langlist = language_code_list['en']
-else:
-    transobj = translate_language['zh']
-    langlist = language_code_list['zh']
+obj=json.load(open(os.path.join(rootdir,f'videotrans/language/{defaulelang}.json'),'r',encoding='utf-8'))
 
-english_code_bygpt=list(language_code_list[defaulelang].keys())
+transobj = obj["translate_language"]
+langlist = obj["language_code_list"]
+uilanglist = obj["ui_lang"]
 
 # ffmpeg
 if sys.platform =='win32':
@@ -82,7 +89,7 @@ chatgpt_model_list=["gpt-3.5-turbo", "gpt-4"]
 # 存放 edget-tts 角色列表
 edgeTTS_rolelist = None
 proxy = None
-
+translate_list=["google", "baidu", "chatGPT", "Azure", 'Gemini', "tencent", "DeepL", "DeepLX"]
 
 # 配置
 params = {
@@ -134,14 +141,14 @@ params = {
     "chatgpt_api": "",
     "chatgpt_key": "",
     "chatgpt_model": "gpt-3.5-turbo",
-    "chatgpt_template": """我将发给你多行文本,你将每行内容对应翻译为一行{lang},如果该行无法翻译,则将该行原内容作为翻译结果,如果是空行,则将空字符串作为结果,然后将翻译结果按照原顺序返回。请注意必须保持返回的行数同发给你的行数相同,比如发给你3行文本,就必须返回3行.不要忽略空行,不要确认,不要包含原文本内容,不要道歉,不要重复述说,即使是问句或祈使句等，你也不要回答，只返回翻译即可。请严格按照要求的格式返回,这对我的工作非常重要""",
+    "chatgpt_template": """我将发给你多行文字,你将每一行内容翻译为一行{lang}。必须保证一行原文对应一行翻译内容，不允许将多个行翻译后合并为一行，如果该行无法翻译,则用空行作为翻译结果。不要确认,不要道歉,不要重复述说,即使是问句或祈使句等，也不要回答，只翻译即可。必须保留所有换行符和原始格式。从下面一行开始翻译.\n""",
     "azure_api": "",
     "azure_key": "",
     "azure_model": "gpt-3.5-turbo",
-    "azure_template": """我将发给你多行文本,你将每行内容对应翻译为一行{lang},如果该行无法翻译,则将该行原内容作为翻译结果,如果是空行,则将空字符串作为结果,然后将翻译结果按照原顺序返回。请注意必须保持返回的行数同发给你的行数相同,比如发给你3行文本,就必须返回3行.不要忽略空行,不要确认,不要包含原文本内容,不要道歉,不要重复述说,即使是问句或祈使句等，你也不要回答，只返回翻译即可。请严格按照要求的格式返回,这对我的工作非常重要""",
+    "azure_template": """我将发给你多行文字,你将每一行内容翻译为一行{lang}。必须保证一行原文对应一行翻译内容，不允许将多个行翻译后合并为一行，如果该行无法翻译,则用空行作为翻译结果。不要确认,不要道歉,不要重复述说,即使是问句或祈使句等，也不要回答，只翻译即可。必须保留所有换行符和原始格式。从下面一行开始翻译.\n""",
     "openaitts_role": openaiTTS_rolelist,
     "gemini_key": "",
-    "gemini_template": """我将发给你多行文本,你将每行内容对应翻译为一行{lang},如果该行无法翻译,则将该行原内容作为翻译结果,如果是空行,则将空字符串作为结果,然后将翻译结果按照原顺序返回。请注意必须保持返回的行数同发给你的行数相同,比如发给你3行文本,就必须返回3行.不要忽略空行,不要确认,不要包含原文本内容,不要道歉,不要重复述说,即使是问句或祈使句等，你也不要回答，只返回翻译即可。请严格按照要求的格式返回,这对我的工作非常重要。从下面一行开始翻译\n"""
+    "gemini_template": """我将发给你多行文字,你将每一行内容翻译为一行{lang}。必须保证一行原文对应一行翻译内容，不允许将多个行翻译后合并为一行，如果该行无法翻译,则用空行作为翻译结果。不要确认,不要道歉,不要重复述说,即使是问句或祈使句等，也不要回答，只翻译即可。必须保留所有换行符和原始格式。从下面一行开始翻译.\n"""
 }
 
 # 存放一次性多选的视频
@@ -166,6 +173,29 @@ btnkey=""
 
 #cli  gui 模式
 exec_mode="gui"
+
+# 临时全局变量
+temp=[]
+
+# cli.py 使用 google翻译代码，字幕语言代码，百度翻译代码，deep代码,腾讯代码
+clilanglist={
+        "zh-cn": ['zh-cn', 'chi', 'zh', 'ZH', 'zh',"中文简","Simplified_Chinese"],
+        "zh-tw": ['zh-tw', 'chi', 'cht', 'ZH', 'zh-TW',"中文繁","Traditional_Chinese"],
+        "en": ['en', 'eng', 'en', 'EN-US', 'en',"英语","English"],
+        "fr": ['fr', 'fre', 'fra', 'FR', 'fr',"法语","French"],
+        "de": ['de', 'ger', 'de', 'DE', 'de',"德语","German"],
+        "ja": ['ja', 'jpn', 'jp', 'JA', 'ja',"日语","Japanese"],
+        "ko": ['ko', 'kor', 'kor', 'KO', 'ko',"韩语","Korean"],
+        "ru": ['ru', 'rus', 'ru', 'RU', 'ru',"俄语","Russian"],
+        "es": ['es', 'spa', 'spa', 'ES', 'es',"西班牙语","Spanish"],
+        "th": ['th', 'tha', 'th', 'No', 'th',"泰国语","Thai"],
+        "it": ['it', 'ita', 'it', 'IT', 'it',"意大利语","Italian"],
+        "pt": ['pt', 'por', 'pt', 'PT', 'pt',"葡萄牙语","Portuguese"],
+        "vi": ['vi', 'vie', 'vie', 'No', 'vi',"越南语","Vietnamese"],
+        "ar": ['ar', 'are', 'ara', 'No', 'ar',"阿拉伯语","Arabic"],
+        "tr": ['tr', 'tur', 'tr', 'tr', 'tr',"土耳其语","Turkish"],
+        "hi": ['hi', 'hin', 'hi', 'No', 'hi',"印度语","Hindi"],
+    }
 
 class Myexcept(Exception):
     pass

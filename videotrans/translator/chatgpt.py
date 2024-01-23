@@ -6,7 +6,6 @@ import httpx
 import openai
 from openai import OpenAI
 from videotrans.configure import config
-from videotrans.configure.config import logger
 from videotrans.util import tools
 
 def create_messages(text_list, lang):
@@ -48,7 +47,7 @@ def process_response(response):
             return result
         msg=f'chatGPT error:{response}'
 
-        logger.error(msg)
+        config.logger.error(msg)
         raise Exception(msg)
     except Exception as e:
         print(e)
@@ -99,7 +98,7 @@ def chatgpttrans(text_list, target_language_chatgpt="English", *, set_p=True):
             raise Exception(f"【ChatGPT Error-2.5】error:{error}")
     else:
         total_result = []
-        split_size = config.settings['OPTIM']['trans_thread']
+        split_size = config.settings['trans_thread']
         srt_lists = [text_list[i:i + split_size] for i in range(0, len(text_list), split_size)]
         srts = ''
         client = create_openai_client(proxies)
@@ -112,7 +111,7 @@ def chatgpttrans(text_list, target_language_chatgpt="English", *, set_p=True):
                 if set_p:
                     tools.set_process(f'chatGPT Line: {it["line"]}')
             len_sub = len(origin)
-            logger.info(f"\n[chatGPT start]待翻译文本:" + "\n".join(trans))
+            config.logger.info(f"\n[chatGPT start]待翻译文本:" + "\n".join(trans))
             messages = create_messages("\n".join(trans), lang)
             try:
                 response = client.chat.completions.create(
